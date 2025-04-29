@@ -21,3 +21,10 @@ knife4j:
         api-rule: package
         api-rule-resources: null
 filePath:
+#配置代理 防止连接超时
+mj:
+  proxy:
+    host: 127.0.0.1
+    port: 7890
+#配置合法跨域地址
+CROS_ALLOWED_ORIGINS: http://localhost:1002,http://localhost:5666,http://localhost:6039,http://104.244.93.11:6013
