@@ -3,14 +3,16 @@ package com.github.novicezk.midjourney;
 import com.github.novicezk.midjourney.enums.TranslateWay;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Data
 @Component
+@RefreshScope
 @ConfigurationProperties(prefix = "mj")
 public class ProxyProperties {
 	/**
@@ -28,7 +30,7 @@ public class ProxyProperties {
 	/**
 	 * discord账号池配置.
 	 */
-	private final List<DiscordAccountConfig> accounts = new ArrayList<>();
+	private final List<DiscordAccountConfig> accounts = new CopyOnWriteArrayList<>();
 	/**
 	 * 代理配置.
 	 */

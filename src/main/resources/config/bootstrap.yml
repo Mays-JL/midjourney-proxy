@@ -1,3 +1,5 @@
+server:
+  port: 8082
 spring:
   application:
     #项目名称
@@ -14,7 +16,9 @@ spring:
       config: #注册中心配置
         #nacos地址
         server-addr: 127.0.0.1:8848
+#        preference: remote
         username: nacos
         password: nacos
         prefix: midjourney-proxy
         file-extension: yaml
+        refresh: true

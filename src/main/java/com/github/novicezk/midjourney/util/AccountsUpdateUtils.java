@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
+import com.github.novicezk.midjourney.ProxyProperties;
+import com.github.novicezk.midjourney.domain.DiscordAccount;
 import com.github.novicezk.midjourney.dto.AccountDTO;
+import com.github.novicezk.midjourney.loadbalancer.DiscordInstance;
 import com.github.novicezk.midjourney.service.NacosConfigManager;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.DumperOptions;
@@ -22,6 +26,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class AccountsUpdateUtils {
     @Value("${filePath}")
     private  String filePath;
@@ -31,6 +36,7 @@ public class AccountsUpdateUtils {
     private String group;
     @Value("yaml")
     private String type;
+    private final ProxyProperties properties;
     public void updateConfig(List<AccountDTO.Account> list) {
         Yaml yaml = new Yaml();
         Map<String, Object> obj;
@@ -107,6 +113,18 @@ public class AccountsUpdateUtils {
                 .filter(account -> !account.getGuildId().equals(guiId))
                 .collect(Collectors.toList()));
         sendAccountsTONacos(accountDTO.getMj().getAccounts());
+        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
+    }
+    public List<DiscordInstance> deleteByGuiIdInInstances(List<DiscordInstance> instances,String guildId) {
+            Iterator<DiscordInstance> iterator = instances.iterator();
+            while (iterator.hasNext()) {
+                DiscordInstance instance = iterator.next();
+                DiscordAccount account = instance.account();
+                if (account != null && guildId.equals(account.getGuildId())) {
+                    iterator.remove();
+                }
+            }
+            return instances;
     }
     public void addAccount(AccountDTO.Account account) throws NacosException, JsonProcessingException {
         NacosConfigManager nacosConfigManager = new NacosConfigManager();
@@ -126,5 +144,23 @@ public class AccountsUpdateUtils {
         }
         accountDTO.getMj().getAccounts().add(account);
         sendAccountsTONacos(accountDTO.getMj().getAccounts());
+        //  手动更新当前 ProxyProperties
+        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
+    }
+    private void updateLocalProxyProperties(List<AccountDTO.Account> accounts) {
+        // 清空旧数据
+        this.properties.getAccounts().clear();
+
+        // 添加到当前实例
+        accounts.forEach(account -> {
+            ProxyProperties.DiscordAccountConfig config = new ProxyProperties.DiscordAccountConfig();
+            config.setGuildId(account.getGuildId());
+            config.setUserToken(account.getUserToken());
+            config.setChannelId(account.getChannelId());
+            config.setUserToken(account.getUserToken());
+            config.setCoreSize(account.getCoreSize());
+            config.setQueueSize(account.getQueueSize());
+            this.properties.getAccounts().add(config);
+        });
     }
 }

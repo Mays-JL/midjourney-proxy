@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8082
   servlet:
     context-path: /mj
 logging:
@@ -21,6 +21,14 @@ knife4j:
         api-rule: package
         api-rule-resources: null
 filePath:
+
+spring:
+  cloud:
+    nacos:
+      config:
+        enabled: true
+        refresh-enabled: true
+
 #配置代理 防止连接超时
 mj:
   proxy:

@@ -15,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -32,7 +31,6 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 	private final ProxyProperties properties;
 
 	@Override
-	@RefreshScope
 	public void run(ApplicationArguments args) throws Exception {
 		ProxyProperties.ProxyConfig proxy = this.properties.getProxy();
 		if (Strings.isNotBlank(proxy.getHost())) {
