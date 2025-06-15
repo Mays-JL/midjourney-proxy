@@ -12,6 +12,7 @@ import com.github.novicezk.midjourney.support.DiscordAccountHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 
@@ -29,16 +30,19 @@ public class AccountsRepeatUtils {
     private final ProxyProperties properties;
     private final AccountsUpdateUtils accountsUpdateUtils;
     public boolean fun(boolean isDelete,String guildId) {
-        ProxyProperties.ProxyConfig proxy = this.properties.getProxy();
+        ProxyProperties.ProxyConfig proxy = properties.getProxy();
         if (Strings.isNotBlank(proxy.getHost())) {
             System.setProperty("http.proxyHost", proxy.getHost());
             System.setProperty("http.proxyPort", String.valueOf(proxy.getPort()));
             System.setProperty("https.proxyHost", proxy.getHost());
             System.setProperty("https.proxyPort", String.valueOf(proxy.getPort()));
         }
-        List<ProxyProperties.DiscordAccountConfig> configAccounts = this.properties.getAccounts();
-        if (CharSequenceUtil.isNotBlank(this.properties.getDiscord().getChannelId())) {
-        configAccounts.add(this.properties.getDiscord());
+        List<ProxyProperties.DiscordAccountConfig> configAccounts = properties.getAccounts();
+        if(configAccounts.size()==0){
+            return false;
+        }
+        if (CharSequenceUtil.isNotBlank(properties.getDiscord().getChannelId())) {
+        configAccounts.add(properties.getDiscord());
     }
         List<DiscordInstance> instances = this.discordLoadBalancer.getAllInstances();
 

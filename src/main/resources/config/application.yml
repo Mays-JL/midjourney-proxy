@@ -22,12 +22,19 @@ knife4j:
         api-rule-resources: null
 filePath:
 
+#spring:
+#  cloud:
+#    nacos:
+#      config:
+#        enabled: true
+#        refresh-enabled: true
 spring:
-  cloud:
+   cloud:
     nacos:
-      config:
-        enabled: true
-        refresh-enabled: true
+     config:
+       import-check:
+          enabled: false
+
 
 #配置代理 防止连接超时
 mj:

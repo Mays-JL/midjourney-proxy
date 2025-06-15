@@ -103,9 +103,12 @@ public class AccountsUpdateUtils {
         }
 
     }
-    public void deleteByGuiId(String guiId) throws NacosException, JsonProcessingException {
+    public String deleteByGuiId(String guiId) throws NacosException, JsonProcessingException {
         NacosConfigManager nacosConfigManager = new NacosConfigManager();
         String content = nacosConfigManager.getConfig(dataId, group, 5000);
+        if(content == null){
+            return "账号为空删除失败";
+        }
         ObjectMapper mapper = new YAMLMapper();
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         AccountDTO accountDTO = mapper.readValue(content, AccountDTO.class);
@@ -113,7 +116,8 @@ public class AccountsUpdateUtils {
                 .filter(account -> !account.getGuildId().equals(guiId))
                 .collect(Collectors.toList()));
         sendAccountsTONacos(accountDTO.getMj().getAccounts());
-        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
+//        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
+        return "删除成功";
     }
     public List<DiscordInstance> deleteByGuiIdInInstances(List<DiscordInstance> instances,String guildId) {
             Iterator<DiscordInstance> iterator = instances.iterator();
@@ -145,7 +149,7 @@ public class AccountsUpdateUtils {
         accountDTO.getMj().getAccounts().add(account);
         sendAccountsTONacos(accountDTO.getMj().getAccounts());
         //  手动更新当前 ProxyProperties
-        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
+//        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
     }
     private void updateLocalProxyProperties(List<AccountDTO.Account> accounts) {
         // 清空旧数据
