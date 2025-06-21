@@ -12,7 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @Data
 @Component
-@RefreshScope
+//@RefreshScope
 @ConfigurationProperties(prefix = "mj")
 public class ProxyProperties {
 	/**
@@ -30,7 +30,7 @@ public class ProxyProperties {
 	/**
 	 * discord账号池配置.
 	 */
-	private final List<DiscordAccountConfig> accounts = new CopyOnWriteArrayList<>();
+	private List<DiscordAccountConfig> accounts = new CopyOnWriteArrayList<>();
 	/**
 	 * 代理配置.
 	 */

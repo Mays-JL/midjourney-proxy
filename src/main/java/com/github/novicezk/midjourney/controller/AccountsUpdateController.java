@@ -9,7 +9,7 @@ import com.github.novicezk.midjourney.dto.AccountRespondDTO;
 import com.github.novicezk.midjourney.loadbalancer.DiscordInstance;
 import com.github.novicezk.midjourney.loadbalancer.DiscordLoadBalancer;
 import com.github.novicezk.midjourney.result.Result;
-import com.github.novicezk.midjourney.util.AccountsRepeatUtils;
+//import com.github.novicezk.midjourney.util.AccountsRepeatUtils;
 import com.github.novicezk.midjourney.util.AccountsUpdateUtils;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -28,7 +28,7 @@ public class AccountsUpdateController {
 
     private final AccountsUpdateUtils accountsUpdateUtils;
 
-    private final AccountsRepeatUtils accountsRepeatUtils;
+//    private final AccountsRepeatUtils accountsRepeatUtils;
 
     private final DiscordLoadBalancer loadBalancer;
     private final ProxyProperties properties;
@@ -39,10 +39,12 @@ public class AccountsUpdateController {
         //修改本地的yml的account
 //      accountsUpdateUtils.updateConfig(list);
         //发送新的accounts到nacos
-        accountsUpdateUtils.sendAccountsTONacos(list);
-        accountsRepeatUtils.fun(false, null);
-        log.info("账号更新为：" + list.toString());
-        return Result.ok("账号更新成功");
+        if (accountsUpdateUtils.sendAccountsTONacos(list)) {
+            log.info("账号更新为：" + list.toString());
+            return Result.ok("账号更新成功");
+        }
+        return Result.fail("账号更新失败");
+//        accountsRepeatUtils.fun(false, null);
     }
 
     @ApiOperation(value = "获取账号")
@@ -76,7 +78,7 @@ public class AccountsUpdateController {
         if (!guildId.isEmpty()) {
             String result = accountsUpdateUtils.deleteByGuiId(guildId);
             if (result.equals("删除成功")) {
-                accountsRepeatUtils.fun(true, guildId);
+//                accountsRepeatUtils.fun(true, guildId);
                 return Result.ok("删除账号:" + guildId);
             } else {
                 return Result.fail(result);
@@ -92,18 +94,24 @@ public class AccountsUpdateController {
             return Result.fail("添加失败：该账号不能为空");
         }
         try {
+            //TODO 校验账号是否 OK
+            //如果不 OK，返回失败
+
+            //如果 OK，则添加账号
             accountsUpdateUtils.addAccount(account);
-            boolean enable = accountsRepeatUtils.fun(false, null);
-            if (enable) {
-                return Result.ok("添加账号成功");
-            } else {
-                //把已经添加到本地的删除
-                accountsUpdateUtils.deleteByGuiId(account.getGuildId());
-                return Result.fail("添加失败：该账号不可用/账号list为0");
-            }
+            return Result.ok();
+//            boolean enable = accountsRepeatUtils.fun(false, null);
+//            if (enable) {
+//                return Result.ok("添加账号成功");
+//            } else {
+//                //把已经添加到本地的删除
+//                accountsUpdateUtils.deleteByGuiId(account.getGuildId());
+//                return Result.fail("添加失败：该账号不可用/账号list为0");
+//            }
         } catch (Exception e) {
-            accountsUpdateUtils.deleteByGuiId(account.getGuildId());
-            e.printStackTrace();
+//            accountsUpdateUtils.deleteByGuiId(account.getGuildId());
+            log.error("add account failed, message: {}", e.getMessage());
+//            e.printStackTrace();
         }
         return Result.fail("添加失败：该账号不可用");
     }

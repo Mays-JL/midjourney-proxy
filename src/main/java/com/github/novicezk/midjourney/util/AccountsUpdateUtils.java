@@ -1,9 +1,14 @@
 package com.github.novicezk.midjourney.util;
 
 
+import com.alibaba.nacos.api.NacosFactory;
+import com.alibaba.nacos.api.config.ConfigService;
+import com.alibaba.nacos.api.config.listener.Listener;
 import com.alibaba.nacos.api.exception.NacosException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
@@ -12,24 +17,30 @@ import com.github.novicezk.midjourney.domain.DiscordAccount;
 import com.github.novicezk.midjourney.dto.AccountDTO;
 import com.github.novicezk.midjourney.loadbalancer.DiscordInstance;
 import com.github.novicezk.midjourney.service.NacosConfigManager;
+import com.github.novicezk.midjourney.support.DiscordAccountInitializer;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.annotation.PostConstruct;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
-
+@Slf4j
 @Component
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class AccountsUpdateUtils {
     @Value("${filePath}")
     private  String filePath;
+    @Value("${spring.cloud.nacos.discovery.server-addr}")
+    private String serverAddr;
     @Value("midjourney-proxy-dev.yaml")
     private  String dataId;
     @Value("DEFAULT_GROUP")
@@ -37,6 +48,51 @@ public class AccountsUpdateUtils {
     @Value("yaml")
     private String type;
     private final ProxyProperties properties;
+    private final DiscordAccountInitializer discordAccountInitializer;
+
+
+    public AccountsUpdateUtils(ProxyProperties properties, DiscordAccountInitializer discordAccountInitializer) {
+        this.properties = properties;
+        this.discordAccountInitializer = discordAccountInitializer;
+    }
+
+    @PostConstruct
+    public void init() throws NacosException {
+        Properties nacosProperties = new Properties();
+        nacosProperties.put("serverAddr", serverAddr);
+        ConfigService configService = NacosFactory.createConfigService(nacosProperties);
+        configService.addListener(dataId, group, new Listener() {
+            @Override
+            public Executor getExecutor() {
+                try {
+
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
+
+            @Override
+            public void receiveConfigInfo(String configInfo) {
+                try {
+//                    configInfo = configInfo.substring(19);
+//                    ObjectMapper mapper = new ObjectMapper();
+//                    List<ProxyProperties.DiscordAccountConfig> accounts = mapper.readValue(configInfo, new TypeReference<>() {});
+
+                    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                    JsonNode root = mapper.readTree(configInfo);
+                    JsonNode accountsNode = root.path("mj").path("accounts");
+
+                    List<ProxyProperties.DiscordAccountConfig> accounts = mapper.readerForListOf(ProxyProperties.DiscordAccountConfig.class).readValue(accountsNode);
+                    properties.setAccounts(accounts);
+                    discordAccountInitializer.run(null);
+                } catch (Exception e) {
+                    log.error(e.getMessage());
+                }
+            }
+        });
+    }
+
     public void updateConfig(List<AccountDTO.Account> list) {
         Yaml yaml = new Yaml();
         Map<String, Object> obj;
@@ -44,7 +100,8 @@ public class AccountsUpdateUtils {
         try (InputStream inputStream = new FileInputStream(filePath)) {
             obj = yaml.load(inputStream);
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+            log.error("update config failed, {}", e.getMessage());
             return;
         }
 
@@ -77,11 +134,11 @@ public class AccountsUpdateUtils {
         try (FileWriter writer = new FileWriter(filePath)) {
             newYaml.dump(obj, writer);
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+            log.error("account update failed: {}", e.getMessage());
         }
     }
-
-    public  void sendAccountsTONacos(List<AccountDTO.Account> list) {
+    public  boolean sendAccountsTONacos(List<AccountDTO.Account> list) {
         try {
 
             NacosConfigManager nacosConfigManager =new NacosConfigManager();
@@ -95,13 +152,11 @@ public class AccountsUpdateUtils {
             String yamlContent = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
 
             nacosConfigManager.updateConfig(dataId, group, yamlContent,type);
-
-        } catch (NacosException e) {
-            e.printStackTrace();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return true;
+        } catch (NacosException | JsonProcessingException e) {
+            log.error(e.getMessage());
         }
-
+        return false;
     }
     public String deleteByGuiId(String guiId) throws NacosException, JsonProcessingException {
         NacosConfigManager nacosConfigManager = new NacosConfigManager();
@@ -119,18 +174,19 @@ public class AccountsUpdateUtils {
 //        updateLocalProxyProperties(accountDTO.getMj().getAccounts());
         return "删除成功";
     }
-    public List<DiscordInstance> deleteByGuiIdInInstances(List<DiscordInstance> instances,String guildId) {
-            Iterator<DiscordInstance> iterator = instances.iterator();
-            while (iterator.hasNext()) {
-                DiscordInstance instance = iterator.next();
-                DiscordAccount account = instance.account();
-                if (account != null && guildId.equals(account.getGuildId())) {
-                    iterator.remove();
-                }
-            }
-            return instances;
-    }
+//    public List<DiscordInstance> deleteByGuiIdInInstances(List<DiscordInstance> instances,String guildId) {
+//            Iterator<DiscordInstance> iterator = instances.iterator();
+//            while (iterator.hasNext()) {
+//                DiscordInstance instance = iterator.next();
+//                DiscordAccount account = instance.account();
+//                if (account != null && guildId.equals(account.getGuildId())) {
+//                    iterator.remove();
+//                }
+//            }
+//            return instances;
+//    }
     public void addAccount(AccountDTO.Account account) throws NacosException, JsonProcessingException {
+        //TODO 不应每次创建每次创建 nacosConfigManager
         NacosConfigManager nacosConfigManager = new NacosConfigManager();
         String content = nacosConfigManager.getConfig(dataId, group, 5000);
         ObjectMapper mapper = new YAMLMapper();
