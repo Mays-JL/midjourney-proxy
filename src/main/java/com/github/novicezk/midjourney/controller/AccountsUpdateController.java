@@ -97,7 +97,7 @@ public class AccountsUpdateController {
             if (enable) {
                 return Result.ok("添加账号成功");
             } else {
-                //把已经添加到本地的删除
+//                把已经添加到本地的删除
                 accountsUpdateUtils.deleteByGuiId(account.getGuildId());
                 return Result.fail("添加失败：该账号不可用/账号list为0");
             }

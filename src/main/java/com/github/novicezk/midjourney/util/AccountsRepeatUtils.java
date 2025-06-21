@@ -12,7 +12,6 @@ import com.github.novicezk.midjourney.support.DiscordAccountHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 
@@ -26,7 +25,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AccountsRepeatUtils {
     private final DiscordLoadBalancer discordLoadBalancer;
-    private final DiscordAccountHelper discordAccountHelper;
+    private final  DiscordAccountHelper discordAccountHelper;
     private final ProxyProperties properties;
     private final AccountsUpdateUtils accountsUpdateUtils;
     public boolean fun(boolean isDelete,String guildId) {
