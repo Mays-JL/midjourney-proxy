@@ -3,8 +3,12 @@ package com.github.novicezk.midjourney.service;
 import com.alibaba.nacos.api.config.ConfigFactory;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.exception.NacosException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 
+@Component("UpdateNacosConfigManager") // 修改Bean名称
+@Slf4j
 public class NacosConfigManager {
     private ConfigService configService;
 
@@ -12,13 +16,15 @@ public class NacosConfigManager {
         configService = ConfigFactory.createConfigService("localhost:8848");
     }
 
-    public void updateConfig(String dataId, String group, String content,String type) throws NacosException {
+    public boolean updateConfig(String dataId, String group, String content,String type) throws NacosException {
 //        configService.publishConfig(dataId, group, content);
         try {
             boolean isPublishOk = configService.publishConfig(dataId, group, content,type);
-            System.out.println("配置发布结果：" + isPublishOk);
+            log.info("配置发布结果：" + isPublishOk);
+            return isPublishOk;
         } catch (NacosException e) {
             e.printStackTrace();
+            return false;
         }
     }
 

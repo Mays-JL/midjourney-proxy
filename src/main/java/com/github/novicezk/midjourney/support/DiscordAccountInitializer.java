@@ -18,8 +18,10 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -29,6 +31,8 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 	private final DiscordLoadBalancer discordLoadBalancer;
 	private final DiscordAccountHelper discordAccountHelper;
 	private final ProxyProperties properties;
+	private final Set<String> failedAccounts = ConcurrentHashMap.newKeySet();
+
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
@@ -44,8 +48,15 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 		if (CharSequenceUtil.isNotBlank(this.properties.getDiscord().getChannelId())) {
 			configAccounts.add(this.properties.getDiscord());
 		}
+		discordLoadBalancer.getAllInstances().clear();
 		List<DiscordInstance> instances = this.discordLoadBalancer.getAllInstances();
-		for (ProxyProperties.DiscordAccountConfig configAccount : configAccounts) {
+		// 创建副本
+		List<ProxyProperties.DiscordAccountConfig> safeConfigAccounts;
+		synchronized (configAccounts) {
+			safeConfigAccounts = new ArrayList<>(configAccounts);
+		}
+
+		for (ProxyProperties.DiscordAccountConfig configAccount : safeConfigAccounts) {
 			DiscordAccount account = new DiscordAccount();
 			BeanUtil.copyProperties(configAccount, account);
 			account.setId(configAccount.getChannelId());
@@ -63,10 +74,14 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 			} catch (Exception e) {
 				log.error("Account({}) init fail, disabled: {}", account.getDisplay(), e.getMessage());
 				account.setEnable(false);
+				failedAccounts.add(account.getChannelId()); // 记录失败账号
 			}
 		}
 		Set<String> enableInstanceIds = instances.stream().filter(DiscordInstance::isAlive).map(DiscordInstance::getInstanceId).collect(Collectors.toSet());
 		log.info("当前可用账号数 [{}] - {}", enableInstanceIds.size(), String.join(", ", enableInstanceIds));
+	}
+	public boolean isAccountFailed(String channelId) {
+		return failedAccounts.contains(channelId);
 	}
 
 }
