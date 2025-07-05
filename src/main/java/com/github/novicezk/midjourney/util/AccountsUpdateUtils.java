@@ -48,6 +48,7 @@ public class AccountsUpdateUtils {
 
     @PostConstruct
     public void init() throws NacosException {
+        log.info("[init] 初始化Nacos监听, serverAddr={}, dataId={}, group={}", serverAddr, dataId, group);
         Properties nacosProperties = new Properties();
         nacosProperties.put("serverAddr", serverAddr);
         ConfigService configService = NacosFactory.createConfigService(nacosProperties);
@@ -57,6 +58,7 @@ public class AccountsUpdateUtils {
                 try {
 
                 } catch (Exception e) {
+                    log.error("[Listener.getExecutor] 异常: {}", e.getMessage(), e);
                     throw new RuntimeException(e);
                 }
                 return null;
@@ -65,9 +67,6 @@ public class AccountsUpdateUtils {
             @Override
             public void receiveConfigInfo(String configInfo) {
                 try {
-//                    configInfo = configInfo.substring(19);
-//                    ObjectMapper mapper = new ObjectMapper();
-//                    List<ProxyProperties.DiscordAccountConfig> accounts = mapper.readValue(configInfo, new TypeReference<>() {});
 
                     ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
                     JsonNode root = mapper.readTree(configInfo);
@@ -75,11 +74,9 @@ public class AccountsUpdateUtils {
 
                     List<ProxyProperties.DiscordAccountConfig> accounts = mapper.readerForListOf(ProxyProperties.DiscordAccountConfig.class).readValue(accountsNode);
                     properties.setAccounts(accounts);
-                    log.info("{} 本次修改后的内容: {}", dataId, configInfo);
                     discordAccountInitializer.run(null);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    log.error(e.getMessage());
+                    log.error("[Listener.receiveConfigInfo] 处理账号配置变更异常: {}", e.getMessage(), e);
                 }
             }
         });
@@ -87,7 +84,6 @@ public class AccountsUpdateUtils {
 
     public boolean sendAccountsTONacos(List<AccountDTO.Account> list) {
         try {
-//            NacosConfigManager nacosConfigManager =new NacosConfigManager();
             // 构造顶层对象
             Map<String, Object> root = new HashMap<>();
             Map<String, Object> mjMap = new HashMap<>();
@@ -98,59 +94,81 @@ public class AccountsUpdateUtils {
             String yamlContent = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
 
             boolean result = nacosConfigManager.updateConfig(dataId, group, yamlContent, type);
-            if(result){
+            if (result) {
+                log.info("[sendAccountsTONacos] Nacos发布成功");
                 return true;
-            }else {
-                log.error("nacos发布失败结果为{}",result);
-                return  false;
+            } else {
+                log.error("[sendAccountsTONacos] Nacos发布失败, result={}", result);
+                return false;
             }
         } catch (NacosException | JsonProcessingException e) {
-            log.error(e.getMessage());
+            log.error("[sendAccountsTONacos] 发布账号到Nacos异常: {}", e.getMessage(), e);
             return false;
         }
     }
 
-    public boolean deleteByGuiId(String guiId) throws NacosException, JsonProcessingException {
-//        NacosConfigManager nacosConfigManager = new NacosConfigManager();
-        String content = nacosConfigManager.getConfig(dataId, group, 5000);
-        if (content == null) {
-            return false;
+    public String deleteByGuiId(String guildId) {
+        try {
+            String content = nacosConfigManager.getConfig(dataId, group, 5000);
+            if (content == null || content.trim().isEmpty()) {
+                log.error("[deleteByGuiId] nacos 配置内容为空");
+                return "nacos 配置内容为空";
+            }
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            JsonNode root = mapper.readTree(content);
+            JsonNode accountsNode = root.path("mj").path("accounts");
+            List<AccountDTO.Account> accounts = new ArrayList<>();
+            if (accountsNode.isArray()) {
+                for (JsonNode node : accountsNode) {
+                    AccountDTO.Account acc = mapper.treeToValue(node, AccountDTO.Account.class);
+                    accounts.add(acc);
+                }
+            }
+            int before = accounts.size();
+            accounts = accounts.stream()
+                    .filter(account -> !guildId.equals(account.getGuildId()))
+                    .collect(Collectors.toList());
+            if (accounts.size() == before) {
+                log.info("[deleteByGuiId] 未找到 guildId={}", guildId);
+                return "未找到该账号";
+            }
+            boolean result = sendAccountsTONacos(accounts);
+            if (result) {
+                log.info("[deleteByGuiId] 删除账号成功, guildId={}", guildId);
+                return "删除账号成功";
+            }
+        } catch (Exception e) {
+            log.error("[deleteByGuiId] 解析失败: {}", e.getMessage(), e);
         }
-        ObjectMapper mapper = new YAMLMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        AccountDTO accountDTO = mapper.readValue(content, AccountDTO.class);
-        accountDTO.getMj().setAccounts(accountDTO.getMj().getAccounts().stream()
-                .filter(account -> !account.getGuildId().equals(guiId))
-                .collect(Collectors.toList()));
-        boolean result = sendAccountsTONacos(accountDTO.getMj().getAccounts());
-       if(result){
-           return true;
-       }
-       return false;
+        log.error("[deleteByGuiId] 删除账号失败, guildId={}", guildId);
+        return "删除账号失败";
     }
 
-    public boolean addAccount(AccountDTO.Account account) throws NacosException, JsonProcessingException {
-        //TODO 不应每次创建每次创建 nacosConfigManager
-//        NacosConfigManager nacosConfigManager = new NacosConfigManager();
-        String content = nacosConfigManager.getConfig(dataId, group, 5000);
-        ObjectMapper mapper = new YAMLMapper();
-        //忽略未知属性
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        AccountDTO accountDTO;
-        if (content == null) {
-            accountDTO = new AccountDTO();
-            accountDTO.getMj().setAccounts(new ArrayList<>());
-        } else {
-            accountDTO = mapper.readValue(content, AccountDTO.class);
+    public boolean addAccount(AccountDTO.Account account) {
+        try {
+            String content = nacosConfigManager.getConfig(dataId, group, 5000);
+            List<AccountDTO.Account> accounts = new ArrayList<>();
+            if (content != null && !content.trim().isEmpty()) {
+                ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+                JsonNode root = mapper.readTree(content);
+                JsonNode accountsNode = root.path("mj").path("accounts");
+                if (accountsNode.isArray()) {
+                    for (JsonNode node : accountsNode) {
+                        AccountDTO.Account acc = mapper.treeToValue(node, AccountDTO.Account.class);
+                        accounts.add(acc);
+                    }
+                }
+            }
+            accounts.add(account);
+            boolean result = sendAccountsTONacos(accounts);
+            if (result) {
+                log.info("[addAccount] 添加账号成功: {}", account);
+                return true;
+            }
+        } catch (Exception e) {
+            log.error("[addAccount] 解析失败: {}", e.getMessage(), e);
         }
-        if (accountDTO.getMj().getAccounts() == null) {
-            accountDTO.getMj().setAccounts(new ArrayList<>());
-        }
-        accountDTO.getMj().getAccounts().add(account);
-        boolean result = sendAccountsTONacos(accountDTO.getMj().getAccounts());
-        if(result){
-            return true;
-        }
+        log.error("[addAccount] 添加账号失败: {}", account);
         return false;
     }
 }

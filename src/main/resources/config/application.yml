@@ -35,7 +35,6 @@ spring:
        import-check:
           enabled: false
 
-
 #配置代理 防止连接超时
 mj:
   proxy:

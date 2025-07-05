@@ -27,5 +27,6 @@ public class AccountDTO {
         private String userAgent;
         private int coreSize;
         private int queueSize;
+        private int timeoutMinutes;
     }
 }

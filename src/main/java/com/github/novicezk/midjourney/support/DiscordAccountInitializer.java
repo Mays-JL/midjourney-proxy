@@ -9,6 +9,7 @@ import com.github.novicezk.midjourney.ReturnCode;
 import com.github.novicezk.midjourney.domain.DiscordAccount;
 import com.github.novicezk.midjourney.loadbalancer.DiscordInstance;
 import com.github.novicezk.midjourney.loadbalancer.DiscordLoadBalancer;
+import com.github.novicezk.midjourney.util.AccountTimeTracker;
 import com.github.novicezk.midjourney.util.AsyncLockUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,6 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 			System.setProperty("https.proxyHost", proxy.getHost());
 			System.setProperty("https.proxyPort", String.valueOf(proxy.getPort()));
 		}
-
 		List<ProxyProperties.DiscordAccountConfig> configAccounts = this.properties.getAccounts();
 		if (CharSequenceUtil.isNotBlank(this.properties.getDiscord().getChannelId())) {
 			configAccounts.add(this.properties.getDiscord());
@@ -71,6 +71,7 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 					throw new ValidateException(lock.getProperty("description", String.class));
 				}
 				instances.add(instance);
+				AccountTimeTracker.recordAccountEnabled(instance.account().getChannelId());
 			} catch (Exception e) {
 				log.error("Account({}) init fail, disabled: {}", account.getDisplay(), e.getMessage());
 				account.setEnable(false);

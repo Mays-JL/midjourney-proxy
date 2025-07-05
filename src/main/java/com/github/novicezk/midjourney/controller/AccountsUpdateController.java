@@ -2,6 +2,8 @@ package com.github.novicezk.midjourney.controller;
 
 import com.alibaba.nacos.api.exception.NacosException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.github.novicezk.midjourney.disabled.AccountStatusChecker;
+import com.github.novicezk.midjourney.disabled.DisabledAccountQueue;
 import com.github.novicezk.midjourney.domain.DiscordAccount;
 import com.github.novicezk.midjourney.dto.AccountDTO;
 import com.github.novicezk.midjourney.dto.AccountRespondDTO;
@@ -29,6 +31,7 @@ public class AccountsUpdateController {
 
     private final DiscordLoadBalancer loadBalancer;
     private final DiscordAccountInitializer discordAccountInitializer;
+    private final DisabledAccountQueue disabledAccountQueue;
 
 
     @ApiOperation(value = "获取账号")
@@ -53,20 +56,28 @@ public class AccountsUpdateController {
         map.put("row", listmap);
         map.put("code", 200);
         map.put("msg", "查询成功");
+        log.info("[getInfo] 查询成功, 总数: {}", listmap.size());
         return map;
     }
 
     @ApiOperation(value = "删除账号")
     @GetMapping("/delete")
-    public Result<String> deleteByGuiId(@RequestParam String guildId) throws JsonProcessingException, NacosException {
+    public Result<String> deleteByGuiId(@RequestParam("guildId") String guildId) throws JsonProcessingException, NacosException {
         if (!guildId.isEmpty()) {
-            boolean result = accountsUpdateUtils.deleteByGuiId(guildId);
-            if (result) {
+            String result = accountsUpdateUtils.deleteByGuiId(guildId);
+            if (result.equals("删除账号成功")) {
+                log.info("[deleteByGuiId] 删除账号成功: guildId={}", guildId);
                 return Result.ok("删除账号:" + guildId);
-            } else {
+            }else if(result.equals("未找到该账号")){
+                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId,result);
+                return Result.fail("删除账号失败,未找到该账号");
+            }
+                else {
+                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId,result);
                 return Result.fail("删除账号失败");
             }
         }
+        log.error("[deleteByGuiId] guildId 为空，删除失败");
         return Result.fail("输入正确的guildId");
     }
 
@@ -74,6 +85,7 @@ public class AccountsUpdateController {
     @PostMapping("/add")
     public Result<String> addAccount(@RequestBody AccountDTO.Account account) throws JsonProcessingException, NacosException {
         if (account.getGuildId() == null) {
+            log.error("[addAccount] 添加失败：guildId 为空, account={}", account);
             return Result.fail("添加失败：该账号不能为空");
         }
         try {
@@ -81,16 +93,21 @@ public class AccountsUpdateController {
             //如果不 OK，返回失败
 
             //如果 OK，则添加账号
-            accountsUpdateUtils.addAccount(account);
+            boolean res = accountsUpdateUtils.addAccount(account);
             boolean result = discordAccountInitializer.isAccountFailed(account.getChannelId());
-            if(result){
-                return Result.fail("添加失败：该账号初始化异常");
+            if (res && !result) {
+                log.info("[addAccount] 添加账号成功: {}", account);
+                return Result.ok("添加成功");
             }
-            return Result.ok("添加成功");
+            if (res && result) {
+                log.info("[addAccount] 添加：该账号初始化异常, account={}", account);
+                return Result.ok("添加失败：该账号初始化异常");
+            }
+
         } catch (Exception e) {
-            log.error("add account failed, message: {}", e.getMessage());
+            log.error("[addAccount] 添加账号异常, account={}, message: {}", account, e.getMessage(), e);
         }
+        log.error("[addAccount] 添加账号失败, account={}", account);
         return Result.fail("添加失败");
     }
-
 }
