@@ -153,8 +153,8 @@ public class SpringUserWebSocketStarter implements WebSocketStarter {
 		log.error("[wss-{}] Account disabled", this.account.getDisplay());
 		disableAccount();
 		AccountTimeTracker.recordAccountDisabled(this.account.getDisplay());
-		DisabledAccountQueue disabledAccountQueue =new DisabledAccountQueue();
-		disabledAccountQueue.addDisabledAccount(this.account.getDisplay(),this.account);
+//		DisabledAccountQueue disabledAccountQueue =new DisabledAccountQueue();
+//		disabledAccountQueue.addDisabledAccount(this.account.getDisplay(),this.account);
 	}
 
 	public void tryStart(boolean reconnect) throws Exception {

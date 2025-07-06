@@ -30,7 +30,7 @@ public class SinglediscordAccountInitializer {
     private final DiscordLoadBalancer discordLoadBalancer;
     private final DiscordAccountHelper discordAccountHelper;
     private final ProxyProperties properties;
-    public void fun(){
+    public boolean fun(){
 //        ProxyProperties.ProxyConfig proxy = this.properties.getProxy();
 //        if (Strings.isNotBlank(proxy.getHost())) {
 //            System.setProperty("http.proxyHost", proxy.getHost());
@@ -50,6 +50,10 @@ public class SinglediscordAccountInitializer {
 //        synchronized (configAccounts) {
 //            safeConfigAccounts = new ArrayList<>(configAccounts);
 //        }
+        if(instances.size()==0){
+            log.error("重连失败：instances实例列表为空");
+            return false;
+        }
         for (DiscordInstance instance : instances) {
             if (!instance.account().isEnable()) {
                 try {
@@ -58,7 +62,7 @@ public class SinglediscordAccountInitializer {
 //                if (!account.isEnable()) {
 //                    return;
 //                }
-                    instance.startWss();
+                    instance.tryStart(true);
                     AsyncLockUtils.LockObject lock = AsyncLockUtils.waitForLock("wss:" + instance.account().getChannelId(), Duration.ofSeconds(10));
                     if (ReturnCode.SUCCESS != lock.getProperty("code", Integer.class, 0)) {
                         throw new ValidateException(lock.getProperty("description", String.class));
@@ -67,8 +71,9 @@ public class SinglediscordAccountInitializer {
                     AccountTimeTracker.recordAccountEnabled(instance.account().getChannelId());
                     instance.account().setEnable(true);
                 } catch (Exception e) {
-                    log.error("Account({}) check fail, disabled: {}", instance.account().getDisplay(), e.getMessage());
+                    log.error("重连失败：Account({}) check fail, disabled: {}", instance.account().getDisplay(), e.getMessage());
                     instance.account().setEnable(false);
+                    return false;
                 }
             }
 //        for (ProxyProperties.DiscordAccountConfig configAccount : safeConfigAccounts) {
@@ -78,7 +83,8 @@ public class SinglediscordAccountInitializer {
 //            account.setId(SingleAccount.getChannelId());
 
         Set<String> enableInstanceIds = instances.stream().filter(DiscordInstance::isAlive).map(DiscordInstance::getInstanceId).collect(Collectors.toSet());
-        log.info("当前可用账号数 [{}] - {}", enableInstanceIds.size(), String.join(", ", enableInstanceIds));
+        log.info("重连成功：当前可用账号数 [{}] - {}", enableInstanceIds.size(), String.join(", ", enableInstanceIds));
+        return true;
         }
 
     }

@@ -2,8 +2,7 @@ package com.github.novicezk.midjourney.controller;
 
 import com.alibaba.nacos.api.exception.NacosException;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.github.novicezk.midjourney.disabled.AccountStatusChecker;
-import com.github.novicezk.midjourney.disabled.DisabledAccountQueue;
+import com.github.novicezk.midjourney.disabled.SinglediscordAccountInitializer;
 import com.github.novicezk.midjourney.domain.DiscordAccount;
 import com.github.novicezk.midjourney.dto.AccountDTO;
 import com.github.novicezk.midjourney.dto.AccountRespondDTO;
@@ -31,7 +30,7 @@ public class AccountsUpdateController {
 
     private final DiscordLoadBalancer loadBalancer;
     private final DiscordAccountInitializer discordAccountInitializer;
-    private final DisabledAccountQueue disabledAccountQueue;
+    private final SinglediscordAccountInitializer singlediscordAccountInitializer;
 
 
     @ApiOperation(value = "获取账号")
@@ -109,5 +108,15 @@ public class AccountsUpdateController {
         }
         log.error("[addAccount] 添加账号失败, account={}", account);
         return Result.fail("添加失败");
+    }
+    @ApiOperation(value = "重连账号")
+    @GetMapping("/reconnect")
+    public Result<String> reconnect() {
+     boolean res=singlediscordAccountInitializer.fun();
+     if(res){
+         return Result.ok("重连成功");
+     }else{
+         return Result.fail("重连失败");
+     }
     }
 }

@@ -77,6 +77,11 @@ public class DiscordInstanceImpl implements DiscordInstance {
 	}
 
 	@Override
+	public void tryStart(boolean reconnect) throws Exception {
+		this.socketStarter.tryStart(reconnect);
+	}
+
+	@Override
 	public List<Task> getRunningTasks() {
 		return this.runningTasks;
 	}
