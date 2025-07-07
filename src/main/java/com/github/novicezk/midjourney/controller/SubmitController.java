@@ -238,5 +238,4 @@ public class SubmitController {
 		}
 		return CharSequenceUtil.join("", imageUrls) + text + paramStr;
 	}
-
 }
