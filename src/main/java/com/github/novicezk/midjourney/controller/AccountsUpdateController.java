@@ -112,11 +112,6 @@ public class AccountsUpdateController {
     @ApiOperation(value = "重连账号")
     @GetMapping("/reconnect")
     public Result<String> reconnect() {
-     boolean res=singlediscordAccountInitializer.fun();
-     if(res){
-         return Result.ok("重连成功");
-     }else{
-         return Result.fail("重连失败");
-     }
+        return singlediscordAccountInitializer.fun() ? Result.ok("重连完成") : Result.fail("重连失败");
     }
 }
