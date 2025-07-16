@@ -31,7 +31,7 @@ public class AccountsUpdateController {
     private final DiscordLoadBalancer loadBalancer;
     private final DiscordAccountInitializer discordAccountInitializer;
     private final SinglediscordAccountInitializer singlediscordAccountInitializer;
-
+    private final DiscordLoadBalancer discordLoadBalancer;
 
     @ApiOperation(value = "获取账号")
     @GetMapping("/getInfo")
@@ -67,12 +67,11 @@ public class AccountsUpdateController {
             if (result.equals("删除账号成功")) {
                 log.info("[deleteByGuiId] 删除账号成功: guildId={}", guildId);
                 return Result.ok("删除账号:" + guildId);
-            }else if(result.equals("未找到该账号")){
-                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId,result);
+            } else if (result.equals("未找到该账号")) {
+                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId, result);
                 return Result.fail("删除账号失败,未找到该账号");
-            }
-                else {
-                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId,result);
+            } else {
+                log.error("[deleteByGuiId] 删除账号失败: guildId={} nacos发布{}", guildId, result);
                 return Result.fail("删除账号失败");
             }
         }
@@ -109,6 +108,7 @@ public class AccountsUpdateController {
         log.error("[addAccount] 添加账号失败, account={}", account);
         return Result.fail("添加失败");
     }
+
     @ApiOperation(value = "重连账号")
     @GetMapping("/reconnect")
     public Result<String> reconnect() {

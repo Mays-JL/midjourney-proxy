@@ -5,18 +5,13 @@ import cn.hutool.core.exceptions.ValidateException;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import com.github.novicezk.midjourney.ReturnCode;
-import com.github.novicezk.midjourney.disabled.DisabledAccountQueue;
 import com.github.novicezk.midjourney.domain.DiscordAccount;
-import com.github.novicezk.midjourney.service.AccountDisableManager;
-import com.github.novicezk.midjourney.support.SpringContextHolder;
 import com.github.novicezk.midjourney.util.AccountTimeTracker;
 import com.github.novicezk.midjourney.util.AsyncLockUtils;
 import com.github.novicezk.midjourney.wss.WebSocketStarter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.websocket.Constants;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
@@ -123,7 +118,7 @@ public class SpringUserWebSocketStarter implements WebSocketStarter {
 		}
 	}
 
-	private void tryReconnect() {
+	public void tryReconnect() {
 		try {
 			tryStart(true);
 		} catch (Exception e) {
@@ -153,8 +148,6 @@ public class SpringUserWebSocketStarter implements WebSocketStarter {
 		log.error("[wss-{}] Account disabled", this.account.getDisplay());
 		disableAccount();
 		AccountTimeTracker.recordAccountDisabled(this.account.getDisplay());
-//		DisabledAccountQueue disabledAccountQueue =new DisabledAccountQueue();
-//		disabledAccountQueue.addDisabledAccount(this.account.getDisplay(),this.account);
 	}
 
 	public void tryStart(boolean reconnect) throws Exception {

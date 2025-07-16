@@ -77,8 +77,8 @@ public class DiscordInstanceImpl implements DiscordInstance {
 	}
 
 	@Override
-	public void tryStart(boolean reconnect) throws Exception {
-		this.socketStarter.tryStart(reconnect);
+	public void tryReconnect() throws Exception {
+		this.socketStarter.tryReconnect();
 	}
 
 	@Override

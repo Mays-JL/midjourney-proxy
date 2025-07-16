@@ -34,7 +34,6 @@ public class DiscordAccountInitializer implements ApplicationRunner {
 	private final ProxyProperties properties;
 	private final Set<String> failedAccounts = ConcurrentHashMap.newKeySet();
 
-
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
 		ProxyProperties.ProxyConfig proxy = this.properties.getProxy();

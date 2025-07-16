@@ -22,8 +22,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SinglediscordAccountInitializer {
     private final DiscordLoadBalancer discordLoadBalancer;
-    private final DiscordAccountHelper discordAccountHelper;
-    private final ProxyProperties properties;
 
     public boolean fun() {
         List<DiscordInstance> instances = this.discordLoadBalancer.getAllInstances();
@@ -32,25 +30,28 @@ public class SinglediscordAccountInitializer {
             log.error("重连失败：instances实例列表为空");
             return false;
         }
+        log.info("重连前instances账号：{}",instances.stream().map(DiscordInstance::account).toList());
         for (DiscordInstance instance : instances) {
             if (!instance.account().isEnable()) {
                 try {
-                    instance.tryStart(true);
-                    AsyncLockUtils.LockObject lock = AsyncLockUtils.waitForLock("wss:" + instance.account().getChannelId(), Duration.ofSeconds(10));
-                    if (ReturnCode.SUCCESS != lock.getProperty("code", Integer.class, 0)) {
-                        throw new ValidateException(lock.getProperty("description", String.class));
-                    }
-                    AccountTimeTracker.recordAccountEnabled(instance.account().getChannelId());
+                    instance.tryReconnect();
+//                    AsyncLockUtils.LockObject lock = AsyncLockUtils.waitForLock("wss:" + instance.account().getChannelId(), Duration.ofSeconds(30));
+//                    if (ReturnCode.SUCCESS != lock.getProperty("code", Integer.class, 0)) {
+//                        throw new ValidateException(lock.getProperty("description", String.class));
+//                    }
                     instance.account().setEnable(true);
                     log.info("重连成功：Account({}) reconnect success", instance.account().getDisplay());
                 } catch (Exception e) {
+                    e.printStackTrace();
                     log.error("重连失败：Account({}) reconnect fail, disabled: {}", instance.account().getDisplay(), e.getMessage());
                     instance.account().setEnable(false);
+                    return false;
                 }
             }
         }
         Set<String> enableInstanceIds = instances.stream().filter(DiscordInstance::isAlive).map(DiscordInstance::getInstanceId).collect(Collectors.toSet());
         log.info("重连完成：当前可用账号数 [{}] - {}", enableInstanceIds.size(), String.join(", ", enableInstanceIds));
+        log.info("重连后instances账号：{}",instances.stream().map(DiscordInstance::account).toList());
         return true;
     }
 }

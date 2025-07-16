@@ -38,6 +38,7 @@ public class AccountsUpdateUtils {
     private final ProxyProperties properties;
     private final DiscordAccountInitializer discordAccountInitializer;
     private final NacosConfigManager nacosConfigManager;
+    private volatile boolean isFirstCall = true;
 
 
     public AccountsUpdateUtils(ProxyProperties properties, DiscordAccountInitializer discordAccountInitializer, NacosConfigManager nacosConfigManager) {
@@ -74,7 +75,12 @@ public class AccountsUpdateUtils {
 
                     List<ProxyProperties.DiscordAccountConfig> accounts = mapper.readerForListOf(ProxyProperties.DiscordAccountConfig.class).readValue(accountsNode);
                     properties.setAccounts(accounts);
+                    if (isFirstCall) {
+                        isFirstCall = false;
+                        return; // 跳过首次触发
+                    }
                     discordAccountInitializer.run(null);
+                    log.info("[AccountsUpdateUtils]:执行discordAccountInitializer");
                 } catch (Exception e) {
                     log.error("[Listener.receiveConfigInfo] 处理账号配置变更异常: {}", e.getMessage(), e);
                 }
